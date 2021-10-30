@@ -1,0 +1,419 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.4.1008.15138",
+      "templateHash": "11485404716741456434"
+    }
+  },
+  "parameters": {
+    "appServicePlanName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the App Service Plan"
+      }
+    },
+    "appServicePlanSku": {
+      "type": "string",
+      "defaultValue": "S1",
+      "metadata": {
+        "description": "The SKU of App Service Plan."
+      }
+    },
+    "appServicePlanPlatform": {
+      "type": "string",
+      "metadata": {
+        "description": "Select the OS type to deploy."
+      },
+      "allowedValues": [
+        "Win",
+        "Linux"
+      ]
+    },
+    "uiAppServiceName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the UI App Service"
+      }
+    },
+    "apiAppServiceName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the API App Service"
+      }
+    }
+  },
+  "functions": [],
+  "variables": {
+    "defaultTags": {
+      "Team": "DevTeam1"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2021-02-01",
+      "name": "[parameters('appServicePlanName')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "[parameters('appServicePlanSku')]"
+      },
+      "kind": "[if(equals(parameters('appServicePlanPlatform'), 'Linux'), 'linux', 'windows')]",
+      "tags": "[variables('defaultTags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "name": "uiAppService",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "appServiceName": {
+            "value": "[parameters('uiAppServiceName')]"
+          },
+          "appServicePlanId": {
+            "value": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+          },
+          "location": {
+            "value": "[resourceGroup().location]"
+          },
+          "tags": {
+            "value": "[variables('defaultTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.1008.15138",
+              "templateHash": "258778255518145546"
+            }
+          },
+          "parameters": {
+            "appServiceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the App Service Plan"
+              }
+            },
+            "appServicePlanId": {
+              "type": "string",
+              "metadata": {
+                "description": "ID of App Service Plan."
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "West Europe",
+              "metadata": {
+                "description": "Location."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags."
+              }
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2021-02-01",
+              "name": "[parameters('appServiceName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "serverFarmId": "[parameters('appServicePlanId')]",
+                "siteConfig": {
+                  "alwaysOn": true,
+                  "ftpsState": "Disabled",
+                  "netFrameworkVersion": "v6.0",
+                  "appSettings": [
+                    {
+                      "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('appinsights-{0}', parameters('appServiceName'))), '2020-06-01').outputs.instrumentationKey.value]"
+                    }
+                  ]
+                },
+                "httpsOnly": true
+              },
+              "tags": "[parameters('tags')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Resources/deployments', format('appinsights-{0}', parameters('appServiceName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2020-06-01",
+              "name": "[format('appinsights-{0}', parameters('appServiceName'))]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "applicationInsightsName": {
+                    "value": "[format('appi-{0}', parameters('appServiceName'))]"
+                  },
+                  "applicationInsightsLocation": {
+                    "value": "[parameters('location')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.4.1008.15138",
+                      "templateHash": "5186032837581606230"
+                    }
+                  },
+                  "parameters": {
+                    "applicationInsightsName": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Name of the Application Insights"
+                      }
+                    },
+                    "applicationInsightsLocation": {
+                      "type": "string",
+                      "defaultValue": "West Europe",
+                      "metadata": {
+                        "description": "Application Insight Location."
+                      }
+                    },
+                    "tags": {
+                      "type": "object",
+                      "metadata": {
+                        "description": "Tags."
+                      }
+                    }
+                  },
+                  "functions": [],
+                  "resources": [
+                    {
+                      "type": "Microsoft.Insights/components",
+                      "apiVersion": "2020-02-02-preview",
+                      "name": "[parameters('applicationInsightsName')]",
+                      "location": "[parameters('applicationInsightsLocation')]",
+                      "kind": "web",
+                      "properties": {
+                        "Application_Type": "web",
+                        "publicNetworkAccessForIngestion": "Enabled",
+                        "publicNetworkAccessForQuery": "Enabled"
+                      },
+                      "tags": "[parameters('tags')]"
+                    }
+                  ],
+                  "outputs": {
+                    "instrumentationKey": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName'))).InstrumentationKey]"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "appServiceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Web/sites', parameters('appServiceName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "name": "apiAppService",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "appServiceName": {
+            "value": "[parameters('apiAppServiceName')]"
+          },
+          "appServicePlanId": {
+            "value": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+          },
+          "location": {
+            "value": "[resourceGroup().location]"
+          },
+          "tags": {
+            "value": "[variables('defaultTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.1008.15138",
+              "templateHash": "258778255518145546"
+            }
+          },
+          "parameters": {
+            "appServiceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the App Service Plan"
+              }
+            },
+            "appServicePlanId": {
+              "type": "string",
+              "metadata": {
+                "description": "ID of App Service Plan."
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "West Europe",
+              "metadata": {
+                "description": "Location."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags."
+              }
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2021-02-01",
+              "name": "[parameters('appServiceName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "serverFarmId": "[parameters('appServicePlanId')]",
+                "siteConfig": {
+                  "alwaysOn": true,
+                  "ftpsState": "Disabled",
+                  "netFrameworkVersion": "v6.0",
+                  "appSettings": [
+                    {
+                      "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('appinsights-{0}', parameters('appServiceName'))), '2020-06-01').outputs.instrumentationKey.value]"
+                    }
+                  ]
+                },
+                "httpsOnly": true
+              },
+              "tags": "[parameters('tags')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Resources/deployments', format('appinsights-{0}', parameters('appServiceName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2020-06-01",
+              "name": "[format('appinsights-{0}', parameters('appServiceName'))]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "applicationInsightsName": {
+                    "value": "[format('appi-{0}', parameters('appServiceName'))]"
+                  },
+                  "applicationInsightsLocation": {
+                    "value": "[parameters('location')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.4.1008.15138",
+                      "templateHash": "5186032837581606230"
+                    }
+                  },
+                  "parameters": {
+                    "applicationInsightsName": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Name of the Application Insights"
+                      }
+                    },
+                    "applicationInsightsLocation": {
+                      "type": "string",
+                      "defaultValue": "West Europe",
+                      "metadata": {
+                        "description": "Application Insight Location."
+                      }
+                    },
+                    "tags": {
+                      "type": "object",
+                      "metadata": {
+                        "description": "Tags."
+                      }
+                    }
+                  },
+                  "functions": [],
+                  "resources": [
+                    {
+                      "type": "Microsoft.Insights/components",
+                      "apiVersion": "2020-02-02-preview",
+                      "name": "[parameters('applicationInsightsName')]",
+                      "location": "[parameters('applicationInsightsLocation')]",
+                      "kind": "web",
+                      "properties": {
+                        "Application_Type": "web",
+                        "publicNetworkAccessForIngestion": "Enabled",
+                        "publicNetworkAccessForQuery": "Enabled"
+                      },
+                      "tags": "[parameters('tags')]"
+                    }
+                  ],
+                  "outputs": {
+                    "instrumentationKey": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName'))).InstrumentationKey]"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "appServiceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Web/sites', parameters('appServiceName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+      ]
+    }
+  ]
+}

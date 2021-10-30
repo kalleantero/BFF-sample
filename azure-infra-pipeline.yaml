@@ -1,0 +1,69 @@
+name: WeatherForecastInfrastructure
+trigger:
+- master
+
+variables:
+  resourceGroupName: 'rg-weather-forecast'
+  location: 'westeurope'
+  azureSubscription: 'azure-service-connection'  
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+- stage: Build
+  displayName: Build
+  jobs:   
+
+  - job: BuildInfrastructure
+    displayName: Build the infrastructure
+    steps:
+
+    - task: CopyFiles@2
+      displayName: 'Create infrastructure artifact'
+      inputs:
+        SourceFolder: 'infrastructure'
+        Contents: |
+          main.bicep
+          parameters/dev.parameters.json
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish infrastructure artifact'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'infrastructure'
+        publishLocation: 'Container'
+
+- stage: Deploy
+  displayName: Deployment
+  jobs:
+
+  - job: DeployInfrastructure
+    displayName: Deploy infrastructure
+    steps:
+
+    - task: DownloadBuildArtifacts@0
+      displayName: 'Download infrastructure artifact'
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'infrastructure'
+        downloadPath: '$(System.ArtifactsDirectory)'  
+          
+    - task: AzureCLI@2
+      displayName: 'Deploy infrastructure'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az group create \
+            --name $(resourceGroupName) \
+            --location $(location)
+          az deployment group create \
+            --name $(Build.BuildNumber) \
+            --resource-group $(resourceGroupName) \
+            --template-file $(System.ArtifactsDirectory)/infrastructure/main.bicep \
+            --parameters @$(System.ArtifactsDirectory)/infrastructure/parameters/dev.parameters.json \
+          
